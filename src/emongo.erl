@@ -101,14 +101,15 @@ do_auth(Nonce, Pid, Pool, User, Pass) ->
     Query = #emo_query{q=[{<<"authenticate">>, 1}, {<<"user">>, User}, {<<"nonce">>, Nonce}, {<<"key">>, Digest}], limit=1},
     Packet = emongo_packet:do_query(Pool#pool.database, "$cmd", Pool#pool.req_id, Query),
 
-    Resp = emongo_conn:send_recv(Pid, Pool#pool.req_id, Packet, ?TIMEOUT),
-    case lists:nth(1, Resp#response.documents) of
-        [{<<"ok">>, 1.0}] ->
+	Resp = emongo_conn:send_recv(Pid, Pool#pool.req_id, Packet, ?TIMEOUT),
+	L = lists:nth(1, Resp#response.documents),
+	case proplists:get_value(<<"ok">>, L) of
+    	1.0 ->
             {ok, authenticated};
-        L ->
+        E ->
             case lists:keyfind(<<"errmsg">>, 1, L) of
                 false ->
-                    throw(no_error_message);
+                    throw({no_error_message, E, L});
                 {<<"errmsg">>, Error} ->
                     throw(Error)
             end
